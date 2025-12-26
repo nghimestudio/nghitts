@@ -1,0 +1,28 @@
+{
+  "name": "piper-tts-demo",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "format": "prettier --write piper-tts-web-demo",
+    "build": "vite build",
+    "lint": "eslint piper-tts-web-demo",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^0.539.0",
+    "onnxruntime-web": "^1.22.0",
+    "tailwindcss": "^4.1.11",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "eslint": "^9.33.0",
+    "eslint-plugin-vue": "^10.4.0",
+    "prettier": "^3.6.2",
+    "vite": "^7.1.1"
+  }
+}
