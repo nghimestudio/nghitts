@@ -461,6 +461,131 @@ function convertPhoneNumber(text) {
 }
 
 /**
+ * Convert measurement units to Vietnamese names
+ * Only replaces units when there is a number (digits) immediately to the left
+ * Keeps the number as digits - number conversion happens later in the pipeline
+ */
+function convertMeasurementUnits(text) {
+    // Unit mappings: unit symbol -> Vietnamese name
+    const unitMap = {
+        // Length units
+        'm': 'mét',
+        'cm': 'xăng-ti-mét',
+        'mm': 'mi-li-mét',
+        'km': 'ki-lô-mét',
+        'dm': 'đề-xi-mét',
+        'hm': 'héc-tô-mét',
+        'dam': 'đề-ca-mét',
+        "inch": "in",
+
+        // Weight units
+        'kg': 'ki-lô-gam',
+        'g': 'gam',
+        'mg': 'mi-li-gam',
+        't': 'tấn',
+        'tấn': 'tấn',
+        'yến': 'yến',
+        'lạng': 'lạng',
+        // Volume units
+        'ml': 'mi-li-lít',
+        'l': 'lít',
+        'lít': 'lít',
+        // Area units
+        'm²': 'mét vuông',
+        'm2': 'mét vuông',
+        'km²': 'ki-lô-mét vuông',
+        'km2': 'ki-lô-mét vuông',
+        'ha': 'héc-ta',
+        'cm²': 'xăng-ti-mét vuông',
+        'cm2': 'xăng-ti-mét vuông',
+        // Volume units (cubic)
+        'm³': 'mét khối',
+        'm3': 'mét khối',
+        'cm³': 'xăng-ti-mét khối',
+        'cm3': 'xăng-ti-mét khối',
+        'km³': 'ki-lô-mét khối',
+        'km3': 'ki-lô-mét khối',
+        // Time units
+        's': 'giây',
+        'sec': 'giây',
+        'min': 'phút',
+        'h': 'giờ',
+        'hr': 'giờ',
+        'hrs': 'giờ',
+        // Speed units
+        'km/h': 'ki-lô-mét trên giờ',
+        'kmh': 'ki-lô-mét trên giờ',
+        'm/s': 'mét trên giây',
+        'ms': 'mét trên giây',
+        "mm/h": "mi-li-mét trên giờ", // mưa
+        "cm/s": "xăng-ti-mét trên giây", // mưa
+
+        // Temperature units
+        '°C': 'độ C',
+        '°F': 'độ F',
+        '°K': 'độ K',
+        '°R': 'độ R',
+        '°Re': 'độ Re',
+        '°Ro': 'độ Ro',
+        '°N': 'độ N',
+        '°D': 'độ D',
+    };
+
+    // Sort units by length (longest first) to match longer units first (e.g., "km/h" before "km")
+    const sortedUnits = Object.keys(unitMap).sort((a, b) => b.length - a.length);
+
+    // Match patterns: 
+    // 1. Digits + optional space + unit (e.g., "3 cm", "3cm")
+    // 2. Vietnamese number words + optional space + unit (e.g., "hai phẩy bốn cm", "mười lăm cm")
+    // Process longer units first to prevent shorter units from matching within longer ones
+    for (const unit of sortedUnits) {
+        const escapedUnit = unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Pattern 1: digits + optional space + unit
+        let digitPattern;
+        if (unit.length === 1) {
+            // Single char: must NOT be followed by a letter (even with space in between)
+            digitPattern = `(\\d+)\\s*${escapedUnit}(?!\\s*[a-zA-Zà-ỹ])(?=\\s*[^a-zA-Zà-ỹ]|$)`;
+        } else {
+            // Multi-char: just check for space/punctuation/end
+            digitPattern = `(\\d+)\\s*${escapedUnit}(?=\\s|[^\\w]|$)`;
+        }
+        const digitRegex = new RegExp(digitPattern, 'gi');
+        
+        // Pattern 2: Vietnamese number words + optional space + unit
+        // Match sequences of Vietnamese words that represent numbers, including decimals
+        // Match word sequences that start with number words and are followed by the unit
+        // Be careful to match only number sequences, not other words
+        // Pattern: (number word sequence) + optional space + unit
+        // Number sequences can contain: digits words, "phẩy" (decimal), "trăm", "nghìn", etc.
+        // Use a more restrictive pattern that matches known number word patterns
+        const numberWordPattern = `(?:\\b(?:một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|không|trăm|nghìn|triệu|tỷ|lẻ|mốt|tư|lăm|phẩy)\\s*)+`;
+        let wordPattern;
+        if (unit.length === 1) {
+            // Single char: must NOT be followed by a letter
+            wordPattern = `(${numberWordPattern})\\s*${escapedUnit}(?!\\s*[a-zA-Zà-ỹ])(?=\\s*[^a-zA-Zà-ỹ]|$)`;
+        } else {
+            // Multi-char: just check for space/punctuation/end
+            wordPattern = `(${numberWordPattern})\\s*${escapedUnit}(?=\\s|[^\\w]|$)`;
+        }
+        const wordRegex = new RegExp(wordPattern, 'gi');
+        
+        // First, replace digits + unit
+        text = text.replace(digitRegex, (match, digits) => {
+            return digits + ' ' + unitMap[unit];
+        });
+        
+        // Then, replace Vietnamese number words + unit
+        text = text.replace(wordRegex, (match, numberWords) => {
+            const trimmedWords = numberWords.trim();
+            return trimmedWords + ' ' + unitMap[unit];
+        });
+    }
+
+    return text;
+}
+
+/**
  * Normalize Unicode to NFC form
  */
 function normalizeUnicode(text) {
@@ -571,10 +696,14 @@ export function processVietnameseText(text) {
     // In Vietnamese, commas are decimal separators
     text = convertDecimal(text);
     
-    // Step 13: Convert remaining standalone numbers
+    // Step 13: Convert measurement units (before numbers are converted to words)
+    // This runs before convertStandaloneNumbers so it can match digits before units
+    text = convertMeasurementUnits(text);
+    
+    // Step 14: Convert remaining standalone numbers
     text = convertStandaloneNumbers(text);
     
-    // Step 14: Clean whitespace
+    // Step 15: Clean whitespace
     text = cleanWhitespace(text);
     
     // Only log if text actually changed
@@ -590,6 +719,6 @@ export function processVietnameseText(text) {
 
 export { numberToWords, convertDecimal, convertPercentage, convertCurrency, 
          convertTime, convertDate, convertYearRange, convertOrdinal, 
-         convertStandaloneNumbers, convertPhoneNumber, normalizeUnicode,
+         convertStandaloneNumbers, convertMeasurementUnits, convertPhoneNumber, normalizeUnicode,
          removeSpecialChars, normalizePunctuation, cleanWhitespace };
 

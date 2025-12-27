@@ -3,6 +3,9 @@ import { processVietnameseText } from './vietnamese-processor.js';
 // Cache for the word replacement map
 let wordReplacementMapCache = null;
 
+// Cache for the acronym map
+let acronymMapCache = null;
+
 /**
  * Load and parse the CSV file containing non-Vietnamese word replacements
  * Returns a Map sorted by length (longest first) for proper matching priority
@@ -53,6 +56,92 @@ async function loadWordReplacementMap() {
         wordReplacementMapCache = new Map();
         return wordReplacementMapCache;
     }
+}
+
+/**
+ * Load and parse the CSV file containing acronym replacements
+ * Returns a Map sorted by length (longest first) for proper matching priority
+ */
+async function loadAcronymMap() {
+    // Return cached map if already loaded
+    if (acronymMapCache !== null) {
+        return acronymMapCache;
+    }
+
+    try {
+        const response = await fetch('/acronyms.csv');
+        if (!response.ok) {
+            console.warn('Failed to load acronym CSV:', response.statusText);
+            acronymMapCache = new Map();
+            return acronymMapCache;
+        }
+
+        const csvText = await response.text();
+        const lines = csvText.split('\n');
+        const acronymMap = new Map();
+
+        // Skip header row (line 0)
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // Parse CSV line (handle commas within quoted fields if needed)
+            const match = line.match(/^([^,]+),(.+)$/);
+            if (match) {
+                const acronym = match[1].trim();
+                const transliteration = match[2].trim();
+                if (acronym && transliteration) {
+                    // Store lowercase for case-insensitive matching
+                    acronymMap.set(acronym.toLowerCase(), transliteration);
+                }
+            }
+        }
+
+        // Sort entries by length (longest first) and create a sorted array
+        const sortedEntries = Array.from(acronymMap.entries())
+            .sort((a, b) => b[0].length - a[0].length);
+
+        // Create a new Map with sorted entries
+        acronymMapCache = new Map(sortedEntries);
+        return acronymMapCache;
+    } catch (error) {
+        console.error('Error loading acronym CSV:', error);
+        acronymMapCache = new Map();
+        return acronymMapCache;
+    }
+}
+
+/**
+ * Convert acronyms to their Vietnamese transliterations
+ * Matches acronyms case-insensitively, handling dots in acronyms (e.g., "tp.hcm")
+ */
+export async function convertAcronyms(text, acronymMap) {
+    if (!text || typeof text !== 'string' || !acronymMap || acronymMap.size === 0) {
+        return text;
+    }
+
+    let result = text;
+
+    // Process each acronym entry (already sorted by length, longest first)
+    for (const [acronym, transliteration] of acronymMap) {
+        // Escape special regex characters in the acronym
+        // Note: dots in acronyms (e.g., "tp.hcm") should match literal dots, so we don't escape them
+        const escapedAcronym = acronym.replace(/[+?^${}()|[\]\\]/g, '\\$&');
+        // Dots are not escaped - they match literal dots
+        
+        // Create regex for case-insensitive matching
+        // Use word boundaries - they work correctly with dots (dot is non-word char)
+        // Pattern: word boundary + acronym + word boundary
+        // For "tp.hcm", \b matches before 't' and after 'm', dot is non-word so it's fine
+        const regex = new RegExp(`\\b${escapedAcronym}\\b`, 'gi');
+        
+        // Replace all occurrences
+        result = result.replace(regex, (match) => {
+            return transliteration;
+        });
+    }
+
+    return result;
 }
 
 /**
@@ -126,9 +215,13 @@ export async function processTextForTTS(text) {
     // Then, process Vietnamese text (convert numbers, dates, times, etc.)
     const vietnameseProcessedText = processVietnameseText(cleanedText);
 
-    // Finally, load replacement map and replace non-Vietnamese words
+    // Load replacement map and replace non-Vietnamese words
     const replacementMap = await loadWordReplacementMap();
-    const processedText = await replaceNonVietnameseWords(vietnameseProcessedText, replacementMap);
+    const textAfterWordReplacement = await replaceNonVietnameseWords(vietnameseProcessedText, replacementMap);
+
+    // Finally, load acronym map and convert acronyms
+    const acronymMap = await loadAcronymMap();
+    const processedText = await convertAcronyms(textAfterWordReplacement, acronymMap);
 
     return processedText;
 }
