@@ -24,6 +24,9 @@ A browser-based Vietnamese Text-to-Speech application powered by Piper TTS model
 ## 🧠 Model Training Details
 
 This project is built on top of Piper TTS and fine-tuned using a custom dataset to generate realistic voices.
+Please see the Training Video here: https://www.youtube.com/watch?v=WgvBOljtNvE
+
+
 
 ### 🔹 Base Model
 
