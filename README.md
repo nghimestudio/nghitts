@@ -99,6 +99,8 @@ Pre-trained Vietnamese TTS models are available for download:
 
 4. **vietthao3886.onnx** (~60.6 MB)
    - Configuration: `vietthao3886.onnx.json`
+     
+5.Giọng mới: Mỹ Tâm, Trấn Thành, Ngọc Huyền (review phim), Oryx (giọng nam siêu trầm)
 
 Each model includes both the `.onnx` model file and its corresponding `.onnx.json` configuration file. Download both files for each model to use it in the application.
 
