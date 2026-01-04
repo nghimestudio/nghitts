@@ -1,6 +1,6 @@
 # NGHI-TTS
 
-A browser-based Vietnamese Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference.
+A browser-based Vietnamese Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference. Live demo: https://text2speech.work.
 
 ## Features
 
