@@ -15,6 +15,7 @@ import SpeedControl from './components/SpeedControl.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import AudioChunk from './components/AudioChunk.vue';
 import ModelSelector from './components/ModelSelector.vue';
+import DemoTable from './components/DemoTable.vue';
 import { fetchAvailableModels } from './utils/model-detector.js';
 
 // State variables
@@ -139,6 +140,10 @@ const handleCopy = async () => {
   await navigator.clipboard.writeText(text.value);
   copied.value = true;
   setTimeout(() => { copied.value = false }, 2000);
+}
+
+const handleDemoTextClick = (demoText) => {
+  text.value = demoText;
 }
 
 const fetchModels = async () => {
@@ -415,6 +420,9 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- Demo Table -->
+      <DemoTable @text-click="handleDemoTextClick" />
     </main>
   </div>
 </template>

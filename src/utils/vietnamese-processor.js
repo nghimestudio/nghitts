@@ -167,15 +167,24 @@ function convertDecimal(text) {
 
 /**
  * Convert percentages: 50% -> năm mươi phần trăm
+ * Handles both whole numbers (50%) and decimals (3,2% -> ba phẩy hai phần trăm)
  * Note: Thousand separators (dots) should already be removed before this step
  * Commas in percentages are treated as decimal separators
  */
 function convertPercentage(text) {
-    return text.replace(/(\d+(?:,\d+)?)\s*%/g, (match, num) => {
-        // Remove comma (decimal separator) and convert to words
-        const numWithoutComma = num.replace(/,/g, '');
-        return numberToWords(numWithoutComma) + ' phần trăm';
+    // First handle percentages with decimals (e.g., "3,2%")
+    text = text.replace(/(\d+),(\d+)\s*%/g, (match, integerPart, decimalPart) => {
+        const integerWords = numberToWords(integerPart);
+        const decimalWords = numberToWords(decimalPart.replace(/^0+/, '') || '0');
+        return `${integerWords} phẩy ${decimalWords} phần trăm`;
     });
+    
+    // Then handle whole number percentages (e.g., "50%")
+    text = text.replace(/(\d+)\s*%/g, (match, num) => {
+        return numberToWords(num) + ' phần trăm';
+    });
+    
+    return text;
 }
 
 /**

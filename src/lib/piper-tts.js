@@ -145,12 +145,12 @@ export class PiperTTS {
   // Convert text to phonemes using the phonemizer package
   async textToPhonemes(text) {
     // Log text before phonemizer
-    console.log('📝 Text before phonemizer:', text);
+    // console.log('📝 Text before phonemizer:', text);
     
     if (this.voiceConfig.phoneme_type === "text") {
       // Text phonemes - just return normalized characters
       const normalized = text.normalize("NFD");
-      console.log('📝 Text after normalization (text mode):', normalized);
+      // console.log('📝 Text after normalization (text mode):', normalized);
       return [Array.from(normalized)];
     }
 

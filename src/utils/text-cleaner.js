@@ -211,7 +211,7 @@ export async function processTextForTTS(text) {
 
     // First, clean the text
     const cleanedText = cleanTextForTTS(text);
-    console.log('🔊 Cleaned text:', cleanedText);
+    // console.log('🔊 Cleaned text:', cleanedText);
     // Then, process Vietnamese text (convert numbers, dates, times, etc.)
     const vietnameseProcessedText = processVietnameseText(cleanedText);
 
@@ -325,6 +325,6 @@ export function chunkText(text) {
             chunks.push(currentChunk);
         }
     }
-    console.log('🔊 Chunks:', chunks);
+    // console.log('🔊 Chunks:', chunks);
     return chunks;
 }
