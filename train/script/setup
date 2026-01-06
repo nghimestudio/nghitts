@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+import argparse
+import subprocess
+import venv
+from pathlib import Path
+
+_DIR = Path(__file__).parent
+_PROGRAM_DIR = _DIR.parent
+_VENV_DIR = _PROGRAM_DIR / ".venv"
+_MODULE_DIR = _PROGRAM_DIR / "src" / "piper"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--dev", action="store_true", help="Install dev requirements")
+parser.add_argument("--train", action="store_true", help="Install training requirements")
+args = parser.parse_args()
+
+# Create virtual environment
+builder = venv.EnvBuilder(with_pip=True)
+context = builder.ensure_directories(_VENV_DIR)
+builder.create(_VENV_DIR)
+
+# Upgrade dependencies
+pip = [context.env_exe, "-m", "pip"]
+subprocess.check_call(pip + ["install", "--upgrade", "pip"])
+subprocess.check_call(pip + ["install", "--upgrade", "setuptools", "wheel"])
+
+# Install requirements
+subprocess.check_call(pip + ["install", "-e", str(_PROGRAM_DIR)])
+
+if args.dev:
+    # Install dev requirements
+    subprocess.check_call(pip + ["install", "-e", f"{_PROGRAM_DIR}[dev]"])
+
+if args.train:
+    # Install training requirements
+    subprocess.check_call(pip + ["install", "-e", f"{_PROGRAM_DIR}[train]"])
