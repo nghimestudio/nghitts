@@ -1,6 +1,6 @@
 # NGHI-TTS
 
-A browser-based Vietnamese Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference.
+A browser-based Vietnamese Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference. Live demo: https://text2speech.work.
 
 ## Features
 
@@ -24,6 +24,9 @@ A browser-based Vietnamese Text-to-Speech application powered by Piper TTS model
 ## 🧠 Model Training Details
 
 This project is built on top of Piper TTS and fine-tuned using a custom dataset to generate realistic voices.
+Please see the Training Video here: https://www.youtube.com/watch?v=WgvBOljtNvE
+
+
 
 ### 🔹 Base Model
 
@@ -96,6 +99,8 @@ Pre-trained Vietnamese TTS models are available for download:
 
 4. **vietthao3886.onnx** (~60.6 MB)
    - Configuration: `vietthao3886.onnx.json`
+     
+5. **Giọng mới:** Mỹ Tâm, Trấn Thành, Ngọc Huyền (review phim), Oryx (giọng nam siêu trầm)
 
 Each model includes both the `.onnx` model file and its corresponding `.onnx.json` configuration file. Download both files for each model to use it in the application.
 
