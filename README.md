@@ -88,21 +88,42 @@ Pre-trained Vietnamese TTS models are available for download:
 
 ### Model List
 
-1. **calmwoman3688.onnx** (~60.6 MB)
-   - Configuration: `calmwoman3688.onnx.json`
+1. **calmwoman3688** (~60.6 MB)
+   - Files: `calmwoman3688.onnx` + `calmwoman3688.onnx.json`
+   - Description: Female voice
 
-2. **deepman3909.onnx** (~60.6 MB)
-   - Configuration: `deepman3909.onnx.json`
+2. **deepman3909** (~60.6 MB)
+   - Files: `deepman3909.onnx` + `deepman3909.onnx.json`
+   - Description: Male voice
 
-3. **ngocngan3701.onnx** (~60.6 MB)
-   - Configuration: `ngocngan3701.onnx.json`
+3. **ngocngan3701** (~60.6 MB)
+   - Files: `ngocngan3701.onnx` + `ngocngan3701.onnx.json`
+   - Description: Vietnamese celebrity voice (Ngọc Ngân)
 
-4. **vietthao3886.onnx** (~60.6 MB)
-   - Configuration: `vietthao3886.onnx.json`
+4. **vietthao3886** (~60.6 MB)
+   - Files: `vietthao3886.onnx` + `vietthao3886.onnx.json`
+   - Description: Vietnamese celebrity voice (Việt Thảo)
      
-5. **Giọng mới:** Mỹ Tâm, Trấn Thành, Ngọc Huyền (review phim), Oryx (giọng nam siêu trầm)
+5. **New Voices**: Mỹ Tâm, Trấn Thành, Ngọc Huyền (review phim), Oryx (giọng nam siêu trầm)
 
-Each model includes both the `.onnx` model file and its corresponding `.onnx.json` configuration file. Download both files for each model to use it in the application.
+### Model File Structure
+
+Each model requires **two files** with the same base name:
+- `{model-name}.onnx` - The ONNX model file (binary)
+- `{model-name}.onnx.json` - The model configuration file (JSON)
+
+**For local development**, place both files in the `public/tts-model/` folder:
+```
+public/
+└── tts-model/
+    ├── calmwoman3688.onnx
+    ├── calmwoman3688.onnx.json
+    ├── deepman3909.onnx
+    ├── deepman3909.onnx.json
+    └── ... (other models)
+```
+
+The application will automatically detect all models in this folder when you run `npm run dev`.
 
 ## Tech Stack
 
@@ -167,36 +188,83 @@ The application includes comprehensive Vietnamese text processing that handles:
 - **Phone Numbers**: Digit-by-digit reading
 - **Ordinals**: Conversion of ordinal numbers (thứ 2 → thứ hai)
 
-## Development
+## Running Locally
 
 ### Prerequisites
 
 - Node.js 18+ 
 - npm or yarn
 
-### Installation
+### Step 1: Install Dependencies
 
 ```bash
 npm install
 ```
 
-### Development Server
+### Step 2: Download Models
+
+1. **Download models from Google Drive**: [View Available Models](https://drive.google.com/drive/folders/1f_pCpvgqfvO4fdNKM7WS4zTuXC0HBskL?usp=drive_link)
+
+2. **Create the models directory** (if it doesn't exist):
+   ```bash
+   mkdir -p public/tts-model
+   ```
+
+3. **Place model files in `public/tts-model/` folder**:
+   - Each model requires **two files**:
+     - `{model-name}.onnx` - The ONNX model file (~60-80 MB)
+     - `{model-name}.onnx.json` - The model configuration file
+   - Example: For the `calmwoman3688` model, you need:
+     - `public/tts-model/calmwoman3688.onnx`
+     - `public/tts-model/calmwoman3688.onnx.json`
+
+4. **Recommended models to start with**:
+   - `calmwoman3688` - Female voice
+   - `deepman3909` - Male voice
+   - `ngocngan3701` - Vietnamese celebrity voice
+   - `vietthao3886` - Vietnamese celebrity voice
+
+   **Note**: You can download and use one or more models. The application will automatically detect all models in the `public/tts-model/` folder.
+
+### Step 3: Start Development Server
 
 ```bash
 npm run dev
 ```
 
-### Build
+The application will be available at `http://localhost:5173` (or the port shown in the terminal).
+
+The development server automatically:
+- Serves models from the `public/tts-model/` folder
+- Lists available models via the `/api/models` endpoint
+- Serves model files via `/api/model/{model-name}.onnx` and `/api/model/{model-name}.onnx.json`
+
+### Step 4: Use the Application
+
+1. Open your browser and navigate to the development server URL
+2. Select a model from the dropdown (models are auto-detected from `public/tts-model/`)
+3. Enter Vietnamese text in the text area
+4. Select a voice (if the model supports multiple speakers)
+5. Adjust the speed if needed
+6. Click "Generate Speech" to create audio
+
+## Development
+
+### Build for Production
 
 ```bash
 npm run build
 ```
+
+The production build will be in the `dist/` folder.
 
 ### Preview Production Build
 
 ```bash
 npm run preview
 ```
+
+This serves the production build locally for testing.
 
 ## Deployment
 
