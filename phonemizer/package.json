@@ -3,6 +3,9 @@
   "version": "1.2.2",
   "description": "Simple text to phones converter using eSpeak NG",
   "type": "module",
+  "main": "./dist/phonemizer.js",
+  "module": "./dist/phonemizer.js",
+  "types": "./types/phonemizer.d.ts",
   "exports": {
     "types": "./types/phonemizer.d.ts",
     "node": {
