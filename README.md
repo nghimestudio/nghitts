@@ -201,7 +201,33 @@ The application includes comprehensive Vietnamese text processing that handles:
 npm install
 ```
 
-### Step 2: Download Models
+### Step 2: Setup Phonemizer
+
+After running `npm install`, you need to manually move the `phonemizer` folder to `node_modules`:
+
+1. **Locate the phonemizer folder** in your project (it should be in the project root or provided separately)
+
+2. **Copy the phonemizer folder to node_modules**:
+   ```bash
+   # On Windows (PowerShell)
+   Copy-Item -Path "phonemizer" -Destination "node_modules\phonemizer" -Recurse
+   
+   # On macOS/Linux
+   cp -r phonemizer node_modules/
+   ```
+
+   Or manually:
+   - Copy the entire `phonemizer` folder
+   - Paste it into the `node_modules` directory
+   - The final path should be: `node_modules/phonemizer/`
+
+3. **Verify the setup**:
+   - Check that `node_modules/phonemizer/` exists
+   - The folder should contain the phonemizer package files
+
+**Note**: The phonemizer package is required for text-to-phoneme conversion. Without it, the TTS generation will fail.
+
+### Step 3: Download Models
 
 1. **Download models from Google Drive**: [View Available Models](https://drive.google.com/drive/folders/1f_pCpvgqfvO4fdNKM7WS4zTuXC0HBskL?usp=drive_link)
 
@@ -226,7 +252,7 @@ npm install
 
    **Note**: You can download and use one or more models. The application will automatically detect all models in the `public/tts-model/` folder.
 
-### Step 3: Start Development Server
+### Step 4: Start Development Server
 
 ```bash
 npm run dev
@@ -239,7 +265,7 @@ The development server automatically:
 - Lists available models via the `/api/models` endpoint
 - Serves model files via `/api/model/{model-name}.onnx` and `/api/model/{model-name}.onnx.json`
 
-### Step 4: Use the Application
+### Step 5: Use the Application
 
 1. Open your browser and navigate to the development server URL
 2. Select a model from the dropdown (models are auto-detected from `public/tts-model/`)

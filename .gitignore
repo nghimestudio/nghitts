@@ -9,8 +9,9 @@ lerna-debug.log*
 
 # Ignore all node_modules except phonemizer
 node_modules/*
-!node_modules/phonemizer
-!node_modules/phonemizer/**
+#!node_modules/phonemizer
+#!node_modules/phonemizer/**
+node_modules/*
 dist
 dist-ssr
 *.local
