@@ -134,15 +134,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Explicitly resolve phonemizer to ensure Vite can find it
-      "phonemizer": path.resolve(__dirname, "./node_modules/phonemizer"),
     },
-    // Ensure phonemizer is resolved correctly from node_modules
-    dedupe: ['phonemizer'],
-  },
-  optimizeDeps: {
-    // Include phonemizer in pre-bundling
-    include: ['phonemizer'],
   },
   worker: { format: "es" },
   build: {
