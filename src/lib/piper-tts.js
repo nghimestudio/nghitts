@@ -160,20 +160,39 @@ export class PiperTTS {
     //console.log('🔊 Voice language:', voice);
     const phonemes = await phonemize(text, voice);
     //console.log('🔊 Phonemes:', phonemes);
+    // Remove (en) and (vi) markers from phoneme text
+    let cleanedPhonemeText = typeof phonemes === 'string' ? phonemes : (Array.isArray(phonemes) ? phonemes.join(' ') : '');
+    cleanedPhonemeText = cleanedPhonemeText.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
+    //console.log('🔊 Cleaned phoneme text:', cleanedPhonemeText);
     // Handle different return types from phonemizer
     let phonemeText;
     if (typeof phonemes === 'string') {
-      phonemeText = phonemes;
+      phonemeText = cleanedPhonemeText;
     } else if (Array.isArray(phonemes)) {
-      // Join the array elements - each element is a phonemized sentence
-      phonemeText = phonemes.join(' ');
+      phonemeText = cleanedPhonemeText;
     } else if (phonemes && typeof phonemes === 'object') {
-      // If it's an object, try to extract text property or convert to string
-      phonemeText = phonemes.text || phonemes.phonemes || String(phonemes);
+      // If it's an object, try to extract text property or convert to string, also clean markers
+      let objText = phonemes.text || phonemes.phonemes || String(phonemes);
+      phonemeText = objText.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
     } else {
       console.warn('Unexpected phonemes format:', phonemes);
       phonemeText = String(phonemes || text);
     }
+    //console.log('🔊 Phoneme text:', phonemeText);
+    //// Handle different return types from phonemizer
+    //let phonemeText;
+    //if (typeof phonemes === 'string') {
+    //  phonemeText = phonemes;
+    //} else if (Array.isArray(phonemes)) {
+    //  // Join the array elements - each element is a phonemized sentence
+    //  phonemeText = phonemes.join(' ');
+    //} else if (phonemes && typeof phonemes === 'object') {
+    //  // If it's an object, try to extract text property or convert to string
+    //  phonemeText = phonemes.text || phonemes.phonemes || String(phonemes);
+    //} else {
+    //  console.warn('Unexpected phonemes format:', phonemes);
+    //  phonemeText = String(phonemes || text);
+    //}
     
     // Log text after phonemizer
     //console.log('🔊 Text after phonemizer:', phonemeText);

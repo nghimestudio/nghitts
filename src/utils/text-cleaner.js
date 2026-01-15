@@ -211,13 +211,14 @@ export async function processTextForTTS(text) {
 
     // First, clean the text
     const cleanedText = cleanTextForTTS(text);
-    // console.log('🔊 Cleaned text:', cleanedText);
     // Then, process Vietnamese text (convert numbers, dates, times, etc.)
     const vietnameseProcessedText = processVietnameseText(cleanedText);
+    // Normalize to lowercase for consistent matching of non-Vietnamese words and acronyms
+    const mappingInput = vietnameseProcessedText.toLowerCase();
 
     // Load replacement map and replace non-Vietnamese words
     const replacementMap = await loadWordReplacementMap();
-    const textAfterWordReplacement = await replaceNonVietnameseWords(vietnameseProcessedText, replacementMap);
+    const textAfterWordReplacement = await replaceNonVietnameseWords(mappingInput, replacementMap);
 
     // Finally, load acronym map and convert acronyms
     const acronymMap = await loadAcronymMap();

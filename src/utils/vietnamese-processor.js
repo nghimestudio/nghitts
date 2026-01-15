@@ -453,6 +453,7 @@ function convertStandaloneNumbers(text) {
     });
 }
 
+
 /**
  * Read phone numbers digit by digit
  */
@@ -568,14 +569,17 @@ function convertMeasurementUnits(text) {
         // Pattern: (number word sequence) + optional space + unit
         // Number sequences can contain: digits words, "phẩy" (decimal), "trăm", "nghìn", etc.
         // Use a more restrictive pattern that matches known number word patterns
-        const numberWordPattern = `(?:\\b(?:một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|không|trăm|nghìn|triệu|tỷ|lẻ|mốt|tư|lăm|phẩy)\\s*)+`;
+        // IMPORTANT: Use word boundaries to ensure number words are complete words, not parts of other words
+        // For example, "chín" in "chính" should NOT match
+        const numberWordPattern = `(?:\\b(?:một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|không|trăm|nghìn|triệu|tỷ|lẻ|mốt|tư|lăm|phẩy)\\b\\s*)+`;
         let wordPattern;
         if (unit.length === 1) {
             // Single char: must NOT be followed by a letter
-            wordPattern = `(${numberWordPattern})\\s*${escapedUnit}(?!\\s*[a-zA-Zà-ỹ])(?=\\s*[^a-zA-Zà-ỹ]|$)`;
+            // Also ensure the unit is followed by a word boundary (not part of another word)
+            wordPattern = `(${numberWordPattern})\\s*\\b${escapedUnit}\\b(?!\\s*[a-zA-Zà-ỹ])(?=\\s*[^a-zA-Zà-ỹ]|$)`;
         } else {
             // Multi-char: just check for space/punctuation/end
-            wordPattern = `(${numberWordPattern})\\s*${escapedUnit}(?=\\s|[^\\w]|$)`;
+            wordPattern = `(${numberWordPattern})\\s*\\b${escapedUnit}\\b(?=\\s|[^\\w]|$)`;
         }
         const wordRegex = new RegExp(wordPattern, 'gi');
         
@@ -585,7 +589,19 @@ function convertMeasurementUnits(text) {
         });
         
         // Then, replace Vietnamese number words + unit
-        text = text.replace(wordRegex, (match, numberWords) => {
+        // Use a function to check context and prevent matching number words that are part of other words
+        text = text.replace(wordRegex, (match, numberWords, offset, fullText) => {
+            // Check if the number word is actually a complete word
+            // Get context before and after the match
+            const beforeMatch = fullText.slice(Math.max(0, offset - 1), offset);
+            const afterMatch = fullText.slice(offset + match.length, offset + match.length + 1);
+            
+            // If there's a letter immediately before or after, it's part of another word
+            // Word boundary should handle this, but double-check for safety
+            if (beforeMatch.match(/[a-zA-Zà-ỹ]/) || afterMatch.match(/[a-zA-Zà-ỹ]/)) {
+                return match; // Don't replace, return original
+            }
+            
             const trimmedWords = numberWords.trim();
             return trimmedWords + ' ' + unitMap[unit];
         });

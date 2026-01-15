@@ -13,6 +13,7 @@
   "dependencies": {
     "lucide-vue-next": "^0.539.0",
     "onnxruntime-web": "^1.22.0",
+    "phonemizer": "file:phonemizer-1.2.2.tgz",
     "tailwindcss": "^4.1.11",
     "vue": "^3.5.18"
   },

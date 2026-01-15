@@ -31,3 +31,6 @@ drive-download-20251225T073921Z-3-001/*
 
 dist/*
 .wrangler/*
+public/tts-model/*
+scripts/*
+bak/*

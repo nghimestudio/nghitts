@@ -27,7 +27,9 @@ const loadDemos = async () => {
     { filename: 'ngoc_ngan_demo', speaker: 'Ngọc Ngạn' },
     { filename: 'tran_thanh_demo', speaker: 'Trấn Thành' },
     { filename: 'viet_thao_demo', speaker: 'Việt Thảo' },
-    { filename: 'minh_quang_demo', speaker: 'Minh Quang' }
+    { filename: 'minh_quang_demo', speaker: 'Minh Quang' },
+    { filename: 'mai_phuong_demo', speaker: 'Mai Phương' },
+    { filename: 'my_tam_real_demo', speaker: 'Mỹ Tâm Real' },
   ];
 
   try {
