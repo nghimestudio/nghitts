@@ -31,6 +31,7 @@ const loadDemos = async () => {
     { filename: 'mai_phuong_demo', speaker: 'Mai Phương' },
     { filename: 'my_tam_real_demo', speaker: 'Mỹ Tâm Real' },
 	{ filename: 'chieu_thanh_demo', speaker: 'Chiếu Thành' },
+	{ filename: 'lac_phi_demo', speaker: 'Lạc Phi' },
   ];
 
   try {
