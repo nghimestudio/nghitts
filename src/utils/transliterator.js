@@ -14,6 +14,12 @@ function englishToVietnamese(word) {
   if (w.startsWith('y')) {
     w = 'd' + w.slice(1);
   }
+
+  // Xử lý d đầu từ (English 'd' -> Vietnamese 'đ')
+  // Examples: database -> đa..., data -> đa..., domain -> đô...
+  if (w.startsWith('d')) {
+    w = 'đ' + w.slice(1);
+  }
   
   // BƯỚC 1: Định nghĩa quy tắc
   const highPriorityRules = [
