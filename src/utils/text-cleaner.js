@@ -110,7 +110,7 @@ async function loadAcronymMap() {
  * Load configuration file
  * Returns cached config if already loaded
  */
-async function loadConfig() {
+export async function loadConfig() {
     if (configCache !== null) {
         return configCache;
     }
@@ -133,7 +133,7 @@ async function loadConfig() {
  * @param {object} config - Configuration object
  * @returns {boolean} - True if debug is enabled
  */
-function isDebugEnabled(config) {
+export function isDebugEnabled(config) {
     return config && config.debug === true;
 }
 
@@ -143,7 +143,7 @@ function isDebugEnabled(config) {
  * @param {string} step - Step name
  * @param {object} data - Data to log
  */
-function debugLog(config, step, data) {
+export function debugLog(config, step, data) {
     if (isDebugEnabled(config)) {
         console.log(`[DEBUG] ${step}:`, data);
     }
@@ -472,13 +472,20 @@ export async function processTextForTTS(text) {
     return processedText;
 }
 
-export function chunkText(text) {
+export async function chunkText(text) {
     if (!text || typeof text !== 'string') {
         return [];
     }
 
-    const MIN_CHUNK_LENGTH = 4;
-    const MAX_CHUNK_LENGTH = 500;
+    // Load config for debug logging
+    const config = await loadConfig();
+
+    if (isDebugEnabled(config)) {
+        debugLog(config, 'Step 5: Text Chunking Start', { 
+            inputText: text,
+            inputLength: text.length
+        });
+    }
 
     // First, split by newlines
     const lines = text.split('\n');
@@ -494,83 +501,30 @@ export function chunkText(text) {
         // If it doesn't end with punctuation and it's not empty, add a period
         const processedLine = endsWithPunctuation ? line : line.trim() + '.';
 
-        // First, split the line into sentences based on punctuation followed by whitespace or end of line
+        // Split the line into sentences based on punctuation followed by whitespace or end of line
         // Using regex with positive lookbehind and lookahead to keep punctuation with the sentence
-        const baseSentences = processedLine.split(/(?<=[.!?])(?=\s+|$)/);
+        // Commas are NOT used for splitting - they stay within sentences
+        const sentences = processedLine.split(/(?<=[.!?])(?=\s+|$)/);
 
-        // Then, additionally split at commas (treat commas as soft sentence breaks)
-        const sentences = [];
-        for (const base of baseSentences) {
-            const commaSplit = base.split(/,(?=\s+|$)/);
-            for (const part of commaSplit) {
-                const trimmedPart = part.trim();
-                if (trimmedPart) {
-                    sentences.push(trimmedPart);
-                }
-            }
-        }
-
-        // Process sentences and combine short ones
-        let currentChunk = '';
-
+        // Each sentence becomes its own chunk (no combining)
         for (const sentence of sentences) {
             const trimmedSentence = sentence.trim();
-            if (!trimmedSentence) continue;
-
-            // If this sentence alone exceeds max length, split it at word boundaries
-            if (trimmedSentence.length > MAX_CHUNK_LENGTH) {
-                // Add current chunk if exists
-                if (currentChunk) {
-                    chunks.push(currentChunk);
-                    currentChunk = '';
-                }
-
-                // Split long sentence at word boundaries
-                const words = trimmedSentence.split(' ');
-                let longChunk = '';
-
-                for (const word of words) {
-                    const potentialLongChunk = longChunk + (longChunk ? ' ' : '') + word;
-                    if (potentialLongChunk.length <= MAX_CHUNK_LENGTH) {
-                        longChunk = potentialLongChunk;
-                    } else {
-                        if (longChunk) {
-                            chunks.push(longChunk);
-                        }
-                        longChunk = word;
-                    }
-                }
-
-                if (longChunk) {
-                    currentChunk = longChunk;
-                }
-                continue;
+            if (trimmedSentence) {
+                chunks.push(trimmedSentence);
             }
-
-            // If adding this sentence would exceed max length, finalize current chunk
-            const potentialChunk = currentChunk + (currentChunk ? ' ' : '') + trimmedSentence;
-
-            if (potentialChunk.length > MAX_CHUNK_LENGTH) {
-                if (currentChunk) {
-                    chunks.push(currentChunk);
-                }
-                currentChunk = trimmedSentence;
-            } else if (potentialChunk.length < MIN_CHUNK_LENGTH) {
-                currentChunk = potentialChunk;
-            } else {
-                // Chunk is between min and max length
-                if (currentChunk) {
-                    chunks.push(currentChunk);
-                }
-                currentChunk = trimmedSentence;
-            }
-        }
-
-        // Add any remaining chunk
-        if (currentChunk) {
-            chunks.push(currentChunk);
         }
     }
-    // console.log('🔊 Chunks:', chunks);
+
+    if (isDebugEnabled(config)) {
+        debugLog(config, 'Step 5: Text Chunking Complete', {
+            totalChunks: chunks.length,
+            chunks: chunks.map((chunk, idx) => ({
+                index: idx + 1,
+                text: chunk,
+                length: chunk.length
+            }))
+        });
+    }
+
     return chunks;
 }

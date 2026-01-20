@@ -127,8 +127,7 @@ self.addEventListener("message", async (e) => {
       }
 
       // Normalize peaks & trim silence
-      normalizePeak(waveform, 0.9);
-      waveform = trimSilence(waveform, 0.002, Math.floor(originalSamplingRate * 0.02)); // 20ms padding
+      normalizePeak(waveform, 1.0);
 
       // Create a new merged RawAudio with the original sample rate
       // @ts-expect-error - So that we don't need to import RawAudio
@@ -151,16 +150,6 @@ function normalizePeak(f32, target = 0.9) {
   if (g < 1) {
     for (let i = 0; i < f32.length; i++) f32[i] *= g;
   }
-}
-
-function trimSilence(f32, thresh = 0.002, minSamples = 480) {
-  let s = 0,
-      e = f32.length - 1;
-  while (s < e && Math.abs(f32[s]) < thresh) s++;
-  while (e > s && Math.abs(f32[e]) < thresh) e--;
-  s = Math.max(0, s - minSamples);
-  e = Math.min(f32.length, e + minSamples);
-  return f32.slice(s, e);
 }
 
 // Note: Initialization now handled via init message from UI

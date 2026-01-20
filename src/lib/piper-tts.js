@@ -1,6 +1,55 @@
 /* eslint-disable no-undef */
 
-import { processTextForTTS, chunkText } from '../utils/text-cleaner.js';
+import { processTextForTTS, chunkText, loadConfig, isDebugEnabled, debugLog } from '../utils/text-cleaner.js';
+
+// Merge phonemizer output (which may be an array of clause strings) into a single
+// string while preserving clause separators (commas/semicolons/colons) from the
+// original text. This lets the model \"see\" punctuation and pause naturally.
+function mergePhonemizerOutputPreservePunct(text, phonemes) {
+  // Simple case: phonemizer already returned a single string
+  if (typeof phonemes === 'string') {
+    return phonemes;
+  }
+
+  // Handle object outputs (e.g., { text, phonemes })
+  if (phonemes && typeof phonemes === 'object' && !Array.isArray(phonemes)) {
+    const maybeText = phonemes.text || phonemes.phonemes;
+    if (typeof maybeText === 'string') {
+      return maybeText;
+    }
+    return String(maybeText ?? phonemes);
+  }
+
+  // Fallback for null/undefined and non-array cases
+  if (!Array.isArray(phonemes)) {
+    return String(phonemes ?? '');
+  }
+
+  // Collect clause separators from original text (commas/semicolon/colon)
+  const separators = Array.from(text.matchAll(/[,;:]/g), (m) => m[0]);
+
+  let result = '';
+  let sepIdx = 0;
+
+  for (let i = 0; i < phonemes.length; i++) {
+    const rawPart = phonemes[i];
+    if (!rawPart) continue;
+
+    const part = String(rawPart).trim();
+    if (!part) continue;
+
+    if (result) {
+      // Insert the matching separator if available; otherwise default to comma + space
+      const sep = separators[sepIdx] || ',';
+      result += `${sep} `;
+      sepIdx++;
+    }
+
+    result += part;
+  }
+
+  return result;
+}
 
 // Text splitting stream to break text into chunks
 export class TextSplitterStream {
@@ -12,7 +61,7 @@ export class TextSplitterStream {
   async chunkText(text) {
     // Process the text (clean + replace words), then chunk it
     const processedText = await processTextForTTS(text);
-    return chunkText(processedText);
+    return await chunkText(processedText);
   }
 
   async push(text) {
@@ -144,87 +193,98 @@ export class PiperTTS {
 
   // Convert text to phonemes using the phonemizer package
   async textToPhonemes(text) {
-    // Log text before phonemizer
-    // console.log('📝 Text before phonemizer:', text);
+    const config = await loadConfig();
+    
+    if (isDebugEnabled(config)) {
+      console.log(`[TEXT TO PHONEMES] Input text: ${JSON.stringify(text)}`);
+      console.log(text)
+    }
     
     if (this.voiceConfig.phoneme_type === "text") {
       // Text phonemes - just return normalized characters
       const normalized = text.normalize("NFD");
-      // console.log('📝 Text after normalization (text mode):', normalized);
-      return [Array.from(normalized)];
+      const result = [Array.from(normalized)];
+      
+      if (isDebugEnabled(config)) {
+        console.log(`[TEXT MODE] Normalized: ${JSON.stringify(normalized)}`);
+        console.log(`[FINAL PHONEMES] Result: ${JSON.stringify(result)}`);
+      }
+      
+      return result;
     }
 
     // Use phonemizer for espeak-style phonemes
     const { phonemize } = await import('phonemizer');
     const voice = this.voiceConfig.espeak?.voice || 'en-us';
-    //console.log('🔊 Voice language:', voice);
-    const phonemes = await phonemize(text, voice);
-    //console.log('🔊 Phonemes:', phonemes);
-    // Remove (en) and (vi) markers from phoneme text
-    let cleanedPhonemeText = typeof phonemes === 'string' ? phonemes : (Array.isArray(phonemes) ? phonemes.join(' ') : '');
-    cleanedPhonemeText = cleanedPhonemeText.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
-    //console.log('🔊 Cleaned phoneme text:', cleanedPhonemeText);
-    // Handle different return types from phonemizer
-    let phonemeText;
-    if (typeof phonemes === 'string') {
-      phonemeText = cleanedPhonemeText;
-    } else if (Array.isArray(phonemes)) {
-      phonemeText = cleanedPhonemeText;
-    } else if (phonemes && typeof phonemes === 'object') {
-      // If it's an object, try to extract text property or convert to string, also clean markers
-      let objText = phonemes.text || phonemes.phonemes || String(phonemes);
-      phonemeText = objText.replace(/\(en\)/g, '').replace(/\(vi\)/g, '');
-    } else {
-      console.warn('Unexpected phonemes format:', phonemes);
-      phonemeText = String(phonemes || text);
+    
+    if (isDebugEnabled(config)) {
+      console.log(`[PHONEMIZER] Voice: ${voice}`);
     }
-    //console.log('🔊 Phoneme text:', phonemeText);
-    //// Handle different return types from phonemizer
-    //let phonemeText;
-    //if (typeof phonemes === 'string') {
-    //  phonemeText = phonemes;
-    //} else if (Array.isArray(phonemes)) {
-    //  // Join the array elements - each element is a phonemized sentence
-    //  phonemeText = phonemes.join(' ');
-    //} else if (phonemes && typeof phonemes === 'object') {
-    //  // If it's an object, try to extract text property or convert to string
-    //  phonemeText = phonemes.text || phonemes.phonemes || String(phonemes);
-    //} else {
-    //  console.warn('Unexpected phonemes format:', phonemes);
-    //  phonemeText = String(phonemes || text);
-    //}
     
-    // Log text after phonemizer
-    //console.log('🔊 Text after phonemizer:', phonemeText);
+    const phonemes = await phonemize(text, voice);
     
-    // Split into sentences / segments using punctuation (including commas) and convert to character arrays
-    const sentences = phonemeText
-      .split(/(?<=[.,!?])(?=\s+|$)/)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    const result = sentences.map(sentence => Array.from(sentence.normalize("NFD")));
+    if (isDebugEnabled(config)) {
+      console.log(`[PHONEMIZER] Raw output: ${JSON.stringify(phonemes)}`);
+      console.log(phonemes);
+    }
     
-    // Log final phoneme arrays
-    //console.log('🎯 Final phoneme arrays:', result);
+    // Merge phonemizer output into a single string while preserving punctuation,
+    // then remove (en) and (vi) markers from phoneme text
+    const mergedPhonemeText = mergePhonemizerOutputPreservePunct(text, phonemes);
+    const cleanedPhonemeText = mergedPhonemeText
+      .replace(/\(en\)/g, '')
+      .replace(/\(vi\)/g, '');
+    
+    if (isDebugEnabled(config)) {
+      console.log(`[PHONEMIZER] After marker removal: ${JSON.stringify(cleanedPhonemeText)}`);
+    }
+    
+    const phonemeText = cleanedPhonemeText;
+    
+    // Text is already chunked before it reaches here (1 chunk = 1 sentence).
+    // Do NOT split again by punctuation, since that can introduce extra boundaries/pauses.
+    const sentence = phonemeText.trim();
+    const result = sentence ? [Array.from(sentence.normalize("NFD"))] : [];
+    
+    if (isDebugEnabled(config)) {
+      console.log(`[SENTENCE SPLIT] Split into ${result.length} sentences`);
+      if (sentence) {
+        console.log(`  Sentence 1: ${JSON.stringify(sentence)}`);
+      }
+    }
+    
+    if (isDebugEnabled(config)) {
+      console.log(`[FINAL PHONEMES] Result: ${JSON.stringify(result)}`);
+    }
     
     return result;
   }
 
   // Convert phonemes to IDs using the phoneme ID map
-  phonemesToIds(textPhonemes) {
+  async phonemesToIds(textPhonemes) {
     if (!this.voiceConfig || !this.voiceConfig.phoneme_id_map) {
       throw new Error('Phoneme ID map not available');
     }
 
+    const config = await loadConfig();
     const idMap = this.voiceConfig.phoneme_id_map;
     const BOS = "^";
     const EOS = "$";
     const PAD = "_";
     
+    if (isDebugEnabled(config)) {
+      console.log(`[PHONEME TO ID] BOS=${idMap[BOS]}, PAD=${idMap[PAD]}, EOS=${idMap[EOS]}`);
+    }
+    
     let phonemeIds = [];
 
-    for (let sentencePhonemes of textPhonemes) {
+    for (let sentenceIdx = 0; sentenceIdx < textPhonemes.length; sentenceIdx++) {
+      const sentencePhonemes = textPhonemes[sentenceIdx];
+      
+      if (isDebugEnabled(config)) {
+        console.log(`[SENTENCE ${sentenceIdx + 1}] Phonemes: ${JSON.stringify(sentencePhonemes)}`);
+      }
+      
       phonemeIds.push(idMap[BOS]);
       phonemeIds.push(idMap[PAD]);
 
@@ -238,25 +298,34 @@ export class PiperTTS {
       phonemeIds.push(idMap[EOS]);
     }
 
+    if (isDebugEnabled(config)) {
+      console.log(`[PHONEME TO ID] Total IDs: ${phonemeIds.length}`);
+      console.log(`[PHONEME TO ID] ID sequence: ${phonemeIds.join(' ')}`);
+    }
+
     return phonemeIds;
   }
 
   async *stream(textStreamer, options = {}) {
     const { speakerId = 0, lengthScale = 1.0, noiseScale = 0.667, noiseWScale = 0.8 } = options;
     
-    // Log speaker information
-    // console.log('🎤 Speaker ID:', speakerId);
-    // console.log('🎤 Model num_speakers:', this.voiceConfig?.num_speakers);
-    // console.log('🎤 Using speaker ID:', this.voiceConfig?.num_speakers > 1 ? 'YES' : 'NO (single speaker model)');
+    const config = await loadConfig();
+    let chunkIdx = 0;
     
     // Process the text stream
     for await (const text of textStreamer) {
       if (text.trim()) {
         try {
           if (this.session && this.voiceConfig) {
+            chunkIdx++;
+            
+            if (isDebugEnabled(config)) {
+              console.log(`[CHUNK ${chunkIdx}] Processing text: ${JSON.stringify(text)}`);
+            }
+            
             // Convert text to phonemes then to IDs
             const textPhonemes = await this.textToPhonemes(text);
-            const phonemeIds = this.phonemesToIds(textPhonemes);
+            const phonemeIds = await this.phonemesToIds(textPhonemes);
             
             // Prepare tensors for Piper model
             const ort = await import('onnxruntime-web');
