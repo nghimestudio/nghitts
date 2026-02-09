@@ -172,7 +172,14 @@ function convertDecimal(text) {
  * Commas in percentages are treated as decimal separators
  */
 function convertPercentage(text) {
-    // First handle percentages with decimals (e.g., "3,2%")
+    // First handle percentage ranges (e.g., "3-5%" -> "ba đến năm phần trăm")
+    // This must come before single percentages to avoid matching "3" and "5%" separately
+    // Rule: If there is a "%" symbol (e.g., 3-5%), read as "[number] đến [number] phần trăm"
+    text = text.replace(/(\d+)\s*[-–—]\s*(\d+)\s*%/g, (match, num1, num2) => {
+        return `${numberToWords(num1)} đến ${numberToWords(num2)} phần trăm`;
+    });
+    
+    // Then handle percentages with decimals (e.g., "3,2%")
     text = text.replace(/(\d+),(\d+)\s*%/g, (match, integerPart, decimalPart) => {
         const integerWords = numberToWords(integerPart);
         const decimalWords = numberToWords(decimalPart.replace(/^0+/, '') || '0');
@@ -345,7 +352,9 @@ function convertDate(text) {
         return match;
     });
     
-    // DD/MM/YYYY or DD-MM-YYYY
+    // IMPORTANT: DD/MM/YYYY or DD-MM-YYYY (2 separators) must come BEFORE MM-YYYY pattern
+    // This ensures "3-3-2026" is read as "ngày 3 tháng 3 năm 2026" not "tháng 3 tháng 3 năm 2026"
+    // Rule: If there are 2 "-" or 2 "/", always read as "ngày [number] tháng [number] năm [number]"
     text = text.replace(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/g, (match, day, month, year) => {
         if (isValidDate(day, month, year)) {
             const result = `ngày ${numberToWords(day)} tháng ${numberToWords(month)} năm ${numberToWords(year)}`;
@@ -356,7 +365,9 @@ function convertDate(text) {
     });
     
     // MM/YYYY or MM-YYYY (month/year) - handle both with and without "tháng"
-    text = text.replace(/(?:tháng\s+)?(\d{1,2})\s*[/-]\s*(\d{4})/g, (match, month, year, offset) => {
+    // IMPORTANT: Use negative lookahead to ensure this isn't part of a DD-MM-YYYY pattern
+    // Rule: If there is 1 "-" or 1 "/" and no "%" next to a number, read as "tháng [number] năm [number]"
+    text = text.replace(/(?:tháng\s+)?(\d{1,2})\s*[/-]\s*(\d{4})(?![\/-]\d)/g, (match, month, year, offset) => {
         if (isValidMonth(month) && parseInt(year, 10) >= 1000 && parseInt(year, 10) <= 9999) {
             // Check if "tháng" was already in the match
             const hasThang = match.toLowerCase().includes('tháng');
@@ -370,7 +381,16 @@ function convertDate(text) {
     });
     
     // DD/MM or DD-MM (day/month without year) - validate day <= 31, month <= 12
-    text = text.replace(/(\d{1,2})\s*[/-]\s*(\d{1,2})(?![\/-]\d)/g, (match, day, month) => {
+    // IMPORTANT: Exclude cases where there's a "%" after (e.g., "6-10%" should be handled as percentage range, not date)
+    // Use a more specific negative lookahead that checks if the pattern is followed by digits then "%"
+    // This prevents matching "6-1" in "6-10%" by checking if there are more digits before "%"
+    text = text.replace(/(\d{1,2})\s*[/-]\s*(\d{1,2})(?![\/-]\d)(?!\d+\s*%)/g, (match, day, month, offset, fullText) => {
+        // Additional check: if there's a "%" after (with optional whitespace and/or digits), skip this match
+        // This handles both "6-10%" (where % is immediately after) and "6-1 0%" (where there are digits before %)
+        const afterMatch = fullText.slice(offset + match.length);
+        if (/\s*%/.test(afterMatch) || /\d+\s*%/.test(afterMatch)) {
+            return match; // Don't replace, let percentage handler process it
+        }
         if (isValidDate(day, month)) {
             const result = `${numberToWords(day)} tháng ${numberToWords(month)}`;
             matches.push({ pattern: 'DD/MM', match, result });

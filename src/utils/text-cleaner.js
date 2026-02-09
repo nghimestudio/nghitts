@@ -214,21 +214,31 @@ function applyTransliteration(text, replacementMap, config = null) {
             continue;
         }
 
+        // Skip single-character tokens (e.g. "a", "z" in "a đến z" or letters in "m.a.s.s.a.g.e")
+        // Do not transliterate so output stays unchanged for these
+        if (word.length === 1) {
+            if (isDebugEnabled(config)) {
+                debugLog(config, 'Transliteration', { word, action: 'SKIPPED (single character)' });
+            }
+            continue;
+        }
+
         // Apply transliteration
         const transliterated = transliterateWord(word);
         transliteratedWords.push({ word, transliterated });
-        
+
         // Replace all occurrences of this word (case-insensitive) with transliterated version
-        // Use word boundaries to ensure we only replace whole words
+        // Use Unicode-aware word boundaries so we don't replace letters inside Vietnamese words
+        // (JS \b only treats [a-zA-Z0-9_] as word chars, so \b would match between ệ and c in "việc")
         const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi');
-        
-        result = result.replace(regex, (matched) => {
-            // Preserve original case pattern
-            if (matched[0] === matched[0].toUpperCase()) {
-                return transliterated.charAt(0).toUpperCase() + transliterated.slice(1);
-            }
-            return transliterated;
+        const notWordChar = '[^\\w\\u00C0-\\u1EFF]';
+        const regex = new RegExp('(?:^|(' + notWordChar + '))(' + escapedWord + ')(?=' + notWordChar + '|$)', 'gi');
+
+        result = result.replace(regex, (match, boundary, wordPart) => {
+            const trans = (wordPart && wordPart[0] === wordPart[0].toUpperCase())
+                ? transliterated.charAt(0).toUpperCase() + transliterated.slice(1)
+                : transliterated;
+            return (boundary || '') + trans;
         });
     }
 
@@ -410,6 +420,21 @@ export async function processTextForTTS(text) {
         });
     }
 
+    // Step 3: Acronym conversion (after lowercase for consistent matching)
+    const acronymMap = await loadAcronymMap();
+    if (isDebugEnabled(config)) {
+        debugLog(config, 'Acronym Map Loaded', { 
+            totalEntries: acronymMap.size 
+        });
+    }
+    const textAfterAcronymConversion = await convertAcronyms(mappingInput, acronymMap, config);
+    if (isDebugEnabled(config)) {
+        debugLog(config, 'Step 3: Acronym Conversion', { 
+            before: mappingInput, 
+            after: textAfterAcronymConversion 
+        });
+    }
+
     // Load replacement map
     const replacementMap = await loadWordReplacementMap();
     if (isDebugEnabled(config)) {
@@ -418,47 +443,32 @@ export async function processTextForTTS(text) {
         });
     }
     
-    // Step 3: Replace non-Vietnamese words from CSV FIRST
+    // Step 4: Replace non-Vietnamese words from CSV
     // This ensures CSV entries take priority over transliteration
-    const textAfterWordReplacement = await replaceNonVietnameseWords(mappingInput, replacementMap, config);
+    const textAfterWordReplacement = await replaceNonVietnameseWords(textAfterAcronymConversion, replacementMap, config);
     if (isDebugEnabled(config)) {
-        debugLog(config, 'Step 3: CSV Word Replacement', { 
-            before: mappingInput, 
+        debugLog(config, 'Step 4: CSV Word Replacement', { 
+            before: textAfterAcronymConversion, 
             after: textAfterWordReplacement 
         });
     }
     
-    // Step 3.5: Apply transliteration to words not in CSV (if enabled)
+    // Step 4.5: Apply transliteration to words not in CSV (if enabled)
     // This happens AFTER CSV replacement so we only transliterate words that weren't replaced
-    let textAfterTransliteration = textAfterWordReplacement;
+    let processedText = textAfterWordReplacement;
     if (config.enableTransliteration) {
-        textAfterTransliteration = applyTransliteration(textAfterWordReplacement, replacementMap, config);
+        processedText = applyTransliteration(textAfterWordReplacement, replacementMap, config);
         if (isDebugEnabled(config)) {
-            debugLog(config, 'Step 3.5: Transliteration', { 
+            debugLog(config, 'Step 4.5: Transliteration', { 
                 before: textAfterWordReplacement, 
-                after: textAfterTransliteration,
+                after: processedText,
                 enabled: true
             });
         }
     } else if (isDebugEnabled(config)) {
-        debugLog(config, 'Step 3.5: Transliteration', { 
+        debugLog(config, 'Step 4.5: Transliteration', { 
             enabled: false,
             skipped: true
-        });
-    }
-
-    // Finally, load acronym map and convert acronyms
-    const acronymMap = await loadAcronymMap();
-    if (isDebugEnabled(config)) {
-        debugLog(config, 'Acronym Map Loaded', { 
-            totalEntries: acronymMap.size 
-        });
-    }
-    const processedText = await convertAcronyms(textAfterTransliteration, acronymMap, config);
-    if (isDebugEnabled(config)) {
-        debugLog(config, 'Step 4: Acronym Conversion', { 
-            before: textAfterWordReplacement, 
-            after: processedText 
         });
     }
 
