@@ -23,7 +23,7 @@ const loadDemos = async () => {
     { filename: 'duy_oryx_demo', speaker: 'Duy Oryx' },
     { filename: 'manh_dung_demo', speaker: 'Mạnh Dũng' },
     { filename: 'my_tam_demo', speaker: 'Mỹ Tâm' },
-    { filename: 'ngoc_huyen_demo', speaker: 'Ngọc Huyền' },
+    { filename: 'ngoc_huyen_moi_demo', speaker: 'Ngọc Huyền (mới)' },
     { filename: 'ngoc_ngan_demo', speaker: 'Ngọc Ngạn' },
     { filename: 'tran_thanh_demo', speaker: 'Trấn Thành' },
     { filename: 'viet_thao_demo', speaker: 'Việt Thảo' },
