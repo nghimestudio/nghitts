@@ -15,7 +15,8 @@
     "onnxruntime-web": "^1.22.0",
     "phonemizer": "file:phonemizer-1.2.2.tgz",
     "tailwindcss": "^4.1.11",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "vue-router": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

@@ -6,18 +6,18 @@ export async function onRequestGet(context: {
   try {
     const { env } = context;
     
-    // List all objects in the piper/ prefix
+    // List all objects in the piper/vi/ prefix (Vietnamese models)
     const objects = await env.piper.list({
-      prefix: 'piper/',
+      prefix: 'piper/vi/',
     });
 
     // Filter for .onnx.json files and extract model names
     const models = objects.objects
       .filter((obj) => obj.key.endsWith('.onnx.json'))
       .map((obj) => {
-        // Remove 'piper/' prefix and '.onnx.json' suffix
+        // Remove 'piper/vi/' prefix and '.onnx.json' suffix
         const modelName = obj.key
-          .replace(/^piper\//, '')
+          .replace(/^piper\/vi\//, '')
           .replace(/\.onnx\.json$/, '');
         return modelName;
       })

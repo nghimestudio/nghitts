@@ -1,10 +1,11 @@
 # NGHI-TTS
 
-A browser-based Vietnamese Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference. Live demo: https://text2speech.work.
+A browser-based Text-to-Speech application powered by Piper TTS models and ONNX Runtime Web. Generate high-quality speech directly in your browser without requiring a server for inference. Supports **Vietnamese** (home page) and **other languages** (English, Indonesian) on separate pages. Live demo: https://text2speech.work.
 
 ## Features
 
 - 🌐 **Browser-Based TTS**: Fully client-side text-to-speech processing using Web Workers
+- 🌍 **Multi-Language Pages**: Vietnamese (default), English (`/en`), and Indonesian (`/id`) each have their own page—switch via the header links.
 - 🇻🇳 **Vietnamese Language Support**: Advanced Vietnamese text processing with automatic conversion of:
   - Numbers to words (0 to billions)
   - Dates and date ranges
@@ -112,18 +113,31 @@ Each model requires **two files** with the same base name:
 - `{model-name}.onnx` - The ONNX model file (binary)
 - `{model-name}.onnx.json` - The model configuration file (JSON)
 
-**For local development**, place both files in the `public/tts-model/` folder:
+**For local development**, place models in a **language-specific folder** under `public/tts-model/`:
+
 ```
 public/
 └── tts-model/
-    ├── calmwoman3688.onnx
-    ├── calmwoman3688.onnx.json
-    ├── deepman3909.onnx
-    ├── deepman3909.onnx.json
-    └── ... (other models)
+    ├── vi/                    # Vietnamese (home page /)
+    │   ├── calmwoman3688.onnx
+    │   ├── calmwoman3688.onnx.json
+    │   └── ...
+    ├── en/                    # English (/en)
+    │   ├── en_US-libritts_r-medium.onnx
+    │   ├── en_US-libritts_r-medium.onnx.json
+    │   └── ...
+    └── id/                    # Indonesian (/id)
+        └── ...
 ```
 
-The application will automatically detect all models in this folder when you run `npm run dev`.
+The app lists and serves Vietnamese models from `vi/`, English from `en/`, and Indonesian from `id/` when you run `npm run dev`.
+
+## Using Other Languages (English, Indonesian)
+
+1. **Open the language page**: Use the header links **Tiếng Việt** | **English** | **Indonesia** (or go to `/en` or `/id`).
+2. **Add models locally**: Put `.onnx` and `.onnx.json` pairs in `public/tts-model/en/` for English or `public/tts-model/id/` for Indonesian.
+3. **Select a model**: Choose a model from the dropdown, then pick a voice (if the model has multiple speakers), enter text, and click Generate/Play.
+4. **Production (Cloudflare R2)**: Upload English models under the `piper/en/` prefix and Indonesian under `piper/id/` in your R2 bucket; the app will list and serve them via `/api/piper/{lang}/models` and `/api/model/piper/{lang}/{name}`.
 
 ## Tech Stack
 
@@ -138,31 +152,32 @@ The application will automatically detect all models in this folder when you run
 ## Project Structure
 
 ```
-nghitts/
+piper-tts-web-demo/
 ├── src/
-│   ├── App.vue                 # Main application component
-│   ├── components/             # Vue components
-│   │   ├── AudioChunk.vue     # Audio playback component
-│   │   ├── ModelSelector.vue  # Model selection dropdown
-│   │   ├── SpeedControl.vue   # Speech speed slider
-│   │   ├── TextStatistics.vue # Text stats display
-│   │   ├── ThemeToggle.vue    # Dark/light mode toggle
-│   │   └── VoiceSelector.vue  # Voice selection component
+│   ├── App.vue                 # Shell with header + language nav + router view
+│   ├── router/index.js        # Routes: / (Vietnamese), /en, /id
+│   ├── views/
+│   │   ├── VietnameseView.vue # Vietnamese TTS page
+│   │   └── LanguageView.vue   # English/Indonesian TTS page (reusable)
+│   ├── components/            # AudioChunk, ModelSelector, SpeedControl, etc.
 │   ├── lib/
-│   │   └── piper-tts.js       # Piper TTS implementation
-│   ├── utils/
-│   │   ├── model-cache.js     # Model file caching
-│   │   ├── model-detector.js  # Model discovery from API
-│   │   ├── text-cleaner.js    # Text cleaning and chunking
-│   │   └── vietnamese-processor.js  # Vietnamese text processing
-│   └── workers/
-│       └── tts-worker.js      # Web Worker for TTS processing
-├── functions/
-│   └── api/
-│       ├── models.ts          # List available models
-│       └── model/[name].ts    # Serve model files from R2
+│   │   ├── piper-tts.js       # Piper TTS (Vietnamese preprocessing)
+│   │   └── piper-tts-i18n.js  # Piper TTS for /en and /id (no Vietnamese pipeline)
+│   ├── utils/                 # model-cache, model-detector, text-cleaner, vietnamese-*
+│   ├── workers/
+│   │   ├── tts-worker.js      # Worker for Vietnamese page
+│   │   └── tts-worker-i18n.js # Worker for English/Indonesian pages
+│   └── config.js              # Model base URLs and list URLs per language
+├── functions/api/
+│   ├── models.ts              # List Vietnamese models (R2 prefix piper/vi/)
+│   ├── model/[name].ts        # Serve Vietnamese model files (piper/vi/)
+│   ├── piper/[lang]/models.ts # List models for a language (piper/{lang}/)
+│   └── model/piper/[lang]/[name].ts  # Serve model for a language
 └── public/
-    └── non-vietnamese-words.csv  # Word replacement dictionary
+    ├── tts-model/vi/          # Vietnamese models (local)
+    ├── tts-model/en/          # English models (local)
+    ├── tts-model/id/          # Indonesian models (local)
+    └── non-vietnamese-words.csv
 ```
 
 ## How It Works
@@ -208,24 +223,24 @@ npm install phonemizer-1.2.2.tgz
 
 2. **Create the models directory** (if it doesn't exist):
    ```bash
-   mkdir -p public/tts-model
+   mkdir -p public/tts-model/vi
    ```
 
-3. **Place model files in `public/tts-model/` folder**:
+3. **Place Vietnamese model files in `public/tts-model/vi/`**:
    - Each model requires **two files**:
      - `{model-name}.onnx` - The ONNX model file (~60-80 MB)
      - `{model-name}.onnx.json` - The model configuration file
    - Example: For the `calmwoman3688` model, you need:
-     - `public/tts-model/calmwoman3688.onnx`
-     - `public/tts-model/calmwoman3688.onnx.json`
+     - `public/tts-model/vi/calmwoman3688.onnx`
+     - `public/tts-model/vi/calmwoman3688.onnx.json`
 
-4. **Recommended models to start with**:
+4. **Recommended models to start with** (in `public/tts-model/vi/`):
    - `calmwoman3688` - Female voice
    - `deepman3909` - Male voice
    - `ngocngan3701` - Vietnamese celebrity voice
    - `vietthao3886` - Vietnamese celebrity voice
 
-   **Note**: You can download and use one or more models. The application will automatically detect all models in the `public/tts-model/` folder.
+   **Note**: The app detects all models in `public/tts-model/vi/`. For **English** or **Indonesian**, put models in `public/tts-model/en/` or `public/tts-model/id/` and use the header links to open those pages.
 
 ### Step 3: Start Development Server
 
@@ -236,18 +251,14 @@ npm run dev
 The application will be available at `http://localhost:5173` (or the port shown in the terminal).
 
 The development server automatically:
-- Serves models from the `public/tts-model/` folder
-- Lists available models via the `/api/models` endpoint
-- Serves model files via `/api/model/{model-name}.onnx` and `/api/model/{model-name}.onnx.json`
+- Serves **Vietnamese** models from `public/tts-model/vi/` (list: `/api/models`, files: `/api/model/{name}`)
+- Serves **English/Indonesian** models from `public/tts-model/en/` and `public/tts-model/id/` (list: `/api/piper/{lang}/models`, files: `/api/model/piper/{lang}/{name}`)
 
 ### Step 4: Use the Application
 
-1. Open your browser and navigate to the development server URL
-2. Select a model from the dropdown (models are auto-detected from `public/tts-model/`)
-3. Enter Vietnamese text in the text area
-4. Select a voice (if the model supports multiple speakers)
-5. Adjust the speed if needed
-6. Click "Generate Speech" to create audio
+1. Open your browser and navigate to the development server URL.
+2. **Vietnamese (home)**: Use **Tiếng Việt** or `/`. Select a model from the dropdown (from `public/tts-model/vi/`), enter text, then Generate/Play.
+3. **English or Indonesian**: Click **English** or **Indonesia** in the header (or go to `/en` or `/id`). Add models to `public/tts-model/en/` or `public/tts-model/id/`, then select a model, choose a voice if available, enter text, and Generate/Play.
 
 ## Development
 
@@ -271,13 +282,13 @@ This serves the production build locally for testing.
 
 The project is configured for Cloudflare Pages deployment:
 
-1. Models should be stored in a Cloudflare R2 bucket named `tts-bucket`
-2. Models should be placed in the `piper/` prefix
-3. Each model requires two files:
-   - `{model-name}.onnx` - The ONNX model file
-   - `{model-name}.onnx.json` - The model configuration file
+1. Models should be stored in a Cloudflare R2 bucket (e.g. `tts-bucket`) with **language prefixes**:
+   - **Vietnamese**: `piper/vi/{model-name}.onnx` and `piper/vi/{model-name}.onnx.json` (discovered via `/api/models`)
+   - **English**: `piper/en/{model-name}.onnx` and `.onnx.json` (discovered via `/api/piper/en/models`)
+   - **Indonesian**: `piper/id/{model-name}.onnx` and `.onnx.json` (discovered via `/api/piper/id/models`)
+2. Each model requires two files per language folder as above.
 
-The Cloudflare Pages Function at `/api/models` will automatically discover available models from the R2 bucket.
+The Cloudflare Pages Functions discover and serve models by language prefix.
 
 ## Configuration
 

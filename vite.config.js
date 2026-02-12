@@ -24,19 +24,17 @@ export default defineConfig({
         server.middlewares.use('/api', async (req, res, next) => {
           const url = req.url || '';
           
-          // Handle /api/models endpoint
+          // Handle /api/models endpoint (Vietnamese models in tts-model/vi/)
           if (url === '/models' || url === '/models/') {
             try {
-              const modelsDir = path.join(__dirname, 'public', 'tts-model');
-              
-              // Check if directory exists
+              const modelsDir = path.join(__dirname, 'public', 'tts-model', 'vi');
+
               if (!fs.existsSync(modelsDir)) {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ models: [] }));
                 return;
               }
 
-              // Read directory and find all .onnx.json files
               const files = fs.readdirSync(modelsDir);
               const models = files
                 .filter(file => file.endsWith('.onnx.json'))
@@ -54,12 +52,39 @@ export default defineConfig({
             return;
           }
 
-          // Handle /api/model/[name] endpoint
+          // Handle /api/piper/[lang]/models - list models for a language (i18n pages)
+          const piperModelsMatch = url.match(/^\/piper\/([^/]+)\/models\/?$/);
+          if (piperModelsMatch) {
+            try {
+              const lang = piperModelsMatch[1];
+              const modelsDir = path.join(__dirname, 'public', 'tts-model', lang);
+              if (!fs.existsSync(modelsDir)) {
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ models: [] }));
+                return;
+              }
+              const files = fs.readdirSync(modelsDir);
+              const models = files
+                .filter(file => file.endsWith('.onnx.json'))
+                .map(file => file.replace('.onnx.json', ''))
+                .filter(name => name.length > 0)
+                .sort();
+              res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({ models }));
+            } catch (err) {
+              console.error('Error listing piper lang models:', err);
+              res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({ error: 'Failed to list models', message: err.message }));
+            }
+            return;
+          }
+
+          // Handle /api/model/[name] endpoint (Vietnamese models in tts-model/vi/)
           const modelMatch = url.match(/^\/model\/(.+)$/);
           if (modelMatch) {
             try {
               const fileName = decodeURIComponent(modelMatch[1]);
-              const modelsDir = path.join(__dirname, 'public', 'tts-model');
+              const modelsDir = path.join(__dirname, 'public', 'tts-model', 'vi');
               const filePath = path.join(modelsDir, fileName);
 
               // Security check: ensure file is within models directory

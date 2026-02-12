@@ -2,38 +2,31 @@ export async function onRequestGet(context: {
   env: {
     piper: R2Bucket;
   };
-  params: {
-    name: string;
-  };
+  params: { lang: string; name: string };
 }): Promise<Response> {
   try {
     const { env, params } = context;
-    // Decode in case the frontend sent encodeURIComponent for spaces/special chars
+    const lang = params.lang;
     const fileName = decodeURIComponent(params.name || '');
-    
-    if (!fileName) {
-      return new Response('File name is required', { status: 400 });
+
+    if (!lang || !fileName) {
+      return new Response('Language and file name are required', { status: 400 });
     }
-    
-    // Construct R2 key - Vietnamese models under piper/vi/
-    const r2Key = `piper/vi/${fileName}`;
-    
-    // Get the object from R2
+
+    const r2Key = `piper/${lang}/${fileName}`;
     const object = await env.piper.get(r2Key);
-    
+
     if (!object) {
       return new Response('Model file not found', { status: 404 });
     }
-    
-    // Determine content type based on file extension
+
     let contentType = 'application/octet-stream';
     if (fileName.endsWith('.json')) {
       contentType = 'application/json';
     } else if (fileName.endsWith('.onnx')) {
       contentType = 'application/octet-stream';
     }
-    
-    // Return the file with appropriate headers
+
     return new Response(object.body, {
       headers: {
         'Content-Type': contentType,
@@ -43,11 +36,11 @@ export async function onRequestGet(context: {
       },
     });
   } catch (error) {
-    console.error('Error serving model file:', error);
+    console.error('Error serving piper model file:', error);
     return new Response(
-      JSON.stringify({ 
-        error: 'Failed to serve model file', 
-        message: error instanceof Error ? error.message : String(error) 
+      JSON.stringify({
+        error: 'Failed to serve model file',
+        message: error instanceof Error ? error.message : String(error),
       }),
       {
         status: 500,
@@ -59,4 +52,3 @@ export async function onRequestGet(context: {
     );
   }
 }
-
