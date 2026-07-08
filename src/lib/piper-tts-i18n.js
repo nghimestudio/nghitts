@@ -93,10 +93,9 @@ export class PiperTTS {
 
   static async from_pretrained(modelPath, configPath) {
     try {
-      const ort = await import('onnxruntime-web');
+      const { loadOnnxRuntime } = await import('../utils/onnx-runtime.js');
       const { cachedFetch } = await import('../utils/model-cache.js');
-
-      ort.env.wasm.wasmPaths = `${import.meta.env.BASE_URL}onnx-runtime/`;
+      const ort = await loadOnnxRuntime();
 
       const [modelResponse, configResponse] = await Promise.all([
         cachedFetch(modelPath),
@@ -185,7 +184,8 @@ export class PiperTTS {
             const textPhonemes = await this.textToPhonemes(text);
             const phonemeIds = this.phonemesToIds(textPhonemes);
 
-            const ort = await import('onnxruntime-web');
+            const { loadOnnxRuntime } = await import('../utils/onnx-runtime.js');
+            const ort = await loadOnnxRuntime();
 
             const inputs = {
               'input': new ort.Tensor('int64', new BigInt64Array(phonemeIds.map(id => BigInt(id))), [1, phonemeIds.length]),
